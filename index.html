@@ -105,21 +105,32 @@
     const statusElement = document.getElementById("status");
     keyText.textContent = ACCESS_KEY;
 
-    function resetExpirationTime() {
-      const expiry = Date.now() + DURATION_MS;
-
+    function getOrCreateExpirationTime() {
+      // Reuse the saved expiry time so refreshing the page does not restart the timer.
       try {
-        localStorage.setItem(STORAGE_KEY, String(expiry));
-      } catch (error) {
-        // If localStorage is unavailable, keep the reset time for this page session.
-        window.sessionExpiration = expiry;
-      }
+        const savedExpiry = Number(localStorage.getItem(STORAGE_KEY));
+        if (Number.isFinite(savedExpiry) && savedExpiry > 0) {
+          return savedExpiry;
+        }
 
-      return expiry;
+        const expiry = Date.now() + DURATION_MS;
+        localStorage.setItem(STORAGE_KEY, String(expiry));
+        return expiry;
+      } catch (error) {
+        // Fallback for browsers where localStorage is unavailable.
+        const sessionKey = "antiEnhancementKeyExpiresAtSession";
+        const savedExpiry = Number(sessionStorage.getItem(sessionKey));
+        if (Number.isFinite(savedExpiry) && savedExpiry > 0) {
+          return savedExpiry;
+        }
+        const expiry = Date.now() + DURATION_MS;
+        try { sessionStorage.setItem(sessionKey, String(expiry)); } catch (_) {}
+        return expiry;
+      }
     }
 
-    // Reset the existing expiry timestamp now, starting a fresh 24-hour period.
-    const expiresAt = resetExpirationTime();
+    // Start the 24-hour period only on the first visit; subsequent refreshes reuse it.
+    const expiresAt = getOrCreateExpirationTime();
 
     function updateTimer() {
       const remaining = Math.max(0, expiresAt - Date.now());
