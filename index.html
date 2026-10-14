@@ -105,20 +105,21 @@
     const statusElement = document.getElementById("status");
     keyText.textContent = ACCESS_KEY;
 
-    function getExpirationTime() {
+    function resetExpirationTime() {
+      const expiry = Date.now() + DURATION_MS;
+
       try {
-        let expiry = Number(localStorage.getItem(STORAGE_KEY));
-        if (!Number.isFinite(expiry) || expiry <= 0) {
-          expiry = Date.now() + DURATION_MS;
-          localStorage.setItem(STORAGE_KEY, String(expiry));
-        }
-        return expiry;
+        localStorage.setItem(STORAGE_KEY, String(expiry));
       } catch (error) {
-        if (!window.sessionExpiration) window.sessionExpiration = Date.now() + DURATION_MS;
-        return window.sessionExpiration;
+        // If localStorage is unavailable, keep the reset time for this page session.
+        window.sessionExpiration = expiry;
       }
+
+      return expiry;
     }
-    const expiresAt = getExpirationTime();
+
+    // Reset the existing expiry timestamp now, starting a fresh 24-hour period.
+    const expiresAt = resetExpirationTime();
 
     function updateTimer() {
       const remaining = Math.max(0, expiresAt - Date.now());
